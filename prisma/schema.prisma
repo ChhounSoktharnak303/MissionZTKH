@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Mission {
+  id         Int      @id @default(autoincrement())
+  missionDate DateTime
+  purpose    String
+  distanceKm Float
+  fuelCost   Float
+  ticketCost Float
+  totalCost  Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
