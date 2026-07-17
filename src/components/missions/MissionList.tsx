@@ -11,11 +11,13 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Printer,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useMissions } from "@/hooks/useMissions";
+import { useMissions, getAllMissions } from "@/hooks/useMissions";
 import { formatDate } from "@/utils/format";
 import { formatCurrency } from "@/utils/calculations";
+import { formatNumber } from "@/utils/calculations";
 import { getYears } from "@/utils/format";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -26,7 +28,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function MissionList() {
-  const { missions, total, totalPages, loading, fetchMissions, deleteMission } = useMissions();
+  const { missions, total, totalPages, loading, summary, fetchMissions, deleteMission } = useMissions();
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState<number | "">("");
   const [year, setYear] = useState<number | "">("");
@@ -81,6 +83,91 @@ export default function MissionList() {
     }
   };
 
+  const handlePrint = () => {
+    const allMissions = getAllMissions();
+    let filtered = allMissions;
+
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      filtered = filtered.filter((m) => m.purpose.toLowerCase().includes(q));
+    }
+    if (month) {
+      filtered = filtered.filter((m) => new Date(m.missionDate).getMonth() + 1 === month);
+    }
+    if (year) {
+      filtered = filtered.filter((m) => new Date(m.missionDate).getFullYear() === year);
+    }
+
+    const totalMissions = filtered.length;
+    const totalKm = filtered.reduce((s, m) => s + m.distanceKm, 0);
+    const totalFuelCost = filtered.reduce((s, m) => s + m.fuelCost, 0);
+    const totalTicketCost = filtered.reduce((s, m) => s + m.ticketCost, 0);
+    const grandTotal = filtered.reduce((s, m) => s + m.totalCost, 0);
+
+    const monthLabel = month ? months[Number(month) - 1] : "All";
+    const yearLabel = year || "All Years";
+
+    let rows = filtered.map((m: Mission, i: number) => `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;white-space:nowrap">${formatDate(m.missionDate)}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${m.purpose}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap">${formatNumber(m.distanceKm)} km</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(m.fuelCost)}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${formatCurrency(m.ticketCost)}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600">${formatCurrency(m.totalCost)}</td>
+      </tr>
+    `).join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Mission Report - ${monthLabel} ${yearLabel}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; color: #1f2937; }
+          h1 { font-size: 20px; margin-bottom: 4px; }
+          .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          th { padding: 6px 8px; border-bottom: 2px solid #d1d5db; text-align: left; font-size: 12px; color: #6b7280; }
+          th:nth-child(4), th:nth-child(5), th:nth-child(6), th:nth-child(7) { text-align: right; }
+          .summary { margin-top: 16px; padding: 12px 16px; background: #f3f4f6; border-radius: 8px; display: flex; gap: 32px; font-size: 14px; flex-wrap: wrap; }
+          .summary div { white-space: nowrap; }
+          .summary strong { color: #111827; }
+          .grand { font-size: 16px; font-weight: 700; color: #2563eb; }
+          @media print { body { padding: 12px; } }
+        </style>
+      </head>
+      <body>
+        <h1>Mission Payroll Report</h1>
+        <p class="subtitle">${monthLabel} ${yearLabel} | ${totalMissions} missions</p>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Date</th><th>Purpose</th><th>Distance (km)</th><th>Fuel Cost</th><th>Ticket Cost</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="summary">
+          <div><strong>Total Missions:</strong> ${totalMissions}</div>
+          <div><strong>Total Distance:</strong> ${formatNumber(totalKm)} km</div>
+          <div><strong>Fuel:</strong> ${formatCurrency(totalFuelCost)}</div>
+          <div><strong>Ticket:</strong> ${formatCurrency(totalTicketCost)}</div>
+          <div class="grand"><strong>Grand Total:</strong> ${formatCurrency(grandTotal)}</div>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+  };
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />;
     return sortOrder === "asc" ? (
@@ -119,6 +206,14 @@ export default function MissionList() {
           <SlidersHorizontal className="w-4 h-4" />
           Filters
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handlePrint}
+        >
+          <Printer className="w-4 h-4" />
+          Print
+        </Button>
       </div>
 
       {showFilters && (
@@ -149,6 +244,31 @@ export default function MissionList() {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {!loading && summary.totalMissions > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Missions</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{summary.totalMissions}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Total Distance</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(summary.totalKm)} km</p>
+          </div>
+          <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Fuel Cost</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalFuelCost)}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Ticket Cost</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalTicketCost)}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 shadow-sm">
+            <p className="text-xs text-blue-600 dark:text-blue-400">Grand Total</p>
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(summary.grandTotal)}</p>
+          </div>
         </div>
       )}
 
@@ -231,7 +351,7 @@ export default function MissionList() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/missions/${m.id}/edit`}
+                        href={`/missions/edit?id=${m.id}`}
                         className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />

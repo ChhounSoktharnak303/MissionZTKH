@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Plus, FileDown, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import DashboardLayout from "@/app/dashboard-layout";
 import StatsCards from "@/components/dashboard/StatsCards";
 import DashboardCharts from "@/components/charts/DashboardCharts";
@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import Button from "@/components/ui/Button";
 import { formatDate } from "@/utils/format";
 import { formatCurrency } from "@/utils/calculations";
+import { getAllMissions } from "@/lib/storage";
 import type { Mission, MissionStats, MonthlyData } from "@/types/mission";
 
 export default function HomePage() {
@@ -24,12 +25,9 @@ export default function HomePage() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(() => {
     try {
-      const res = await fetch("/api/missions?pageSize=1000");
-      const json = await res.json();
-      const all: Mission[] = json.data || [];
-
+      const all: Mission[] = getAllMissions();
       setMissions(all);
 
       const totalMissions = all.length;

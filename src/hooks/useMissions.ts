@@ -1,31 +1,22 @@
 import { useState, useCallback } from "react";
 import type { Mission, MissionFormData, MissionFilters, PaginatedResponse } from "@/types/mission";
-
-const API_URL = "/api/missions";
+import { getMissions, createMission as storageCreate, updateMission as storageUpdate, deleteMission as storageDelete, importMissions as storageImport, getAllMissions } from "@/lib/storage";
 
 export function useMissions() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState({ totalMissions: 0, totalKm: 0, totalFuelCost: 0, totalTicketCost: 0, grandTotal: 0 });
 
-  const fetchMissions = useCallback(async (filters: MissionFilters = {}) => {
+  const fetchMissions = useCallback((filters: MissionFilters = {}) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.search) params.set("search", filters.search);
-      if (filters.month) params.set("month", String(filters.month));
-      if (filters.year) params.set("year", String(filters.year));
-      if (filters.sortField) params.set("sortField", filters.sortField);
-      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
-      if (filters.page) params.set("page", String(filters.page));
-      if (filters.pageSize) params.set("pageSize", String(filters.pageSize));
-
-      const res = await fetch(`${API_URL}?${params.toString()}`);
-      const json: PaginatedResponse = await res.json();
-      setMissions(json.data);
-      setTotal(json.total);
-      setTotalPages(json.totalPages);
+      const result: PaginatedResponse = getMissions(filters);
+      setMissions(result.data);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+      if (result.summary) setSummary(result.summary);
     } catch {
       setMissions([]);
     } finally {
@@ -34,43 +25,23 @@ export function useMissions() {
   }, []);
 
   const createMission = useCallback(async (data: MissionFormData) => {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to create mission");
-    return res.json();
+    const mission = storageCreate(data);
+    return mission;
   }, []);
 
   const updateMission = useCallback(async (id: number, data: MissionFormData) => {
-    const res = await fetch(API_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
-    });
-    if (!res.ok) throw new Error("Failed to update mission");
-    return res.json();
+    const mission = storageUpdate(id, data);
+    return mission;
   }, []);
 
   const deleteMission = useCallback(async (id: number) => {
-    const res = await fetch(API_URL, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!res.ok) throw new Error("Failed to delete mission");
-    return res.json();
+    storageDelete(id);
+    return { success: true };
   }, []);
 
   const importMissions = useCallback(async (items: Omit<Mission, "id" | "createdAt" | "updatedAt">[]) => {
-    const res = await fetch(`${API_URL}/import`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
-    });
-    if (!res.ok) throw new Error("Failed to import missions");
-    return res.json();
+    const count = storageImport(items);
+    return { success: true, count };
   }, []);
 
   return {
@@ -78,6 +49,7 @@ export function useMissions() {
     total,
     totalPages,
     loading,
+    summary,
     fetchMissions,
     createMission,
     updateMission,
@@ -85,3 +57,5 @@ export function useMissions() {
     importMissions,
   };
 }
+
+export { getAllMissions };

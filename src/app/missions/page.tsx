@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   FileDown,
   FileUp,
@@ -11,17 +12,16 @@ import DashboardLayout from "@/app/dashboard-layout";
 import MissionList from "@/components/missions/MissionList";
 import Button from "@/components/ui/Button";
 import { exportToExcel, importFromExcel } from "@/utils/excel";
+import { getAllMissions, importMissions as storageImport } from "@/lib/storage";
 import type { Mission } from "@/types/mission";
 
 export default function MissionsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(() => {
     try {
-      const res = await fetch("/api/missions?pageSize=1000");
-      const json = await res.json();
-      setMissions(json.data);
+      setMissions(getAllMissions());
     } catch {
       // silently fail
     }
@@ -49,14 +49,10 @@ export default function MissionsPage() {
       toast.error(result.errors?.join(", ") || "Import failed");
     } else if (result.data) {
       try {
-        await fetch("/api/missions/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: result.data }),
-        });
-        toast.success(`Imported ${result.data.length} missions!`);
+        const count = storageImport(result.data);
+        toast.success(`Imported ${count} missions!`);
         if (result.errors && result.errors.length > 0) {
-          toast(`Skipped rows: ${result.errors.join(", ")}`, { icon: "⚠️" });
+          toast(`Skipped rows: ${result.errors.join(", ")}`, { icon: "warning" });
         }
         loadAll();
       } catch {
@@ -92,12 +88,12 @@ export default function MissionsPage() {
               <FileUp className="w-4 h-4" />
               Import Excel
             </Button>
-            <a href="/missions/new">
+            <Link href="/missions/new">
               <Button size="sm">
                 <Plus className="w-4 h-4" />
                 Add Mission
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
         <MissionList />

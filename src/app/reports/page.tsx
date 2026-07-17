@@ -17,6 +17,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { formatDate, getMonthName, getYears } from "@/utils/format";
 import { formatCurrency, formatNumber } from "@/utils/calculations";
 import { exportToExcel } from "@/utils/excel";
+import { getAllMissions } from "@/lib/storage";
 import type { Mission } from "@/types/mission";
 
 export default function ReportsPage() {
@@ -24,12 +25,13 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const load = useCallback(async () => {
+  const load = useCallback(() => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/missions?year=${selectedYear}&pageSize=1000`);
-      const json = await res.json();
-      setMissions(json.data);
+      const all = getAllMissions().filter(
+        (m) => new Date(m.missionDate).getFullYear() === selectedYear
+      );
+      setMissions(all);
     } catch {
       setMissions([]);
     } finally {

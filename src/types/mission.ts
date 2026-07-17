@@ -40,6 +40,13 @@ export interface PaginatedResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+  summary: {
+    totalMissions: number;
+    totalKm: number;
+    totalFuelCost: number;
+    totalTicketCost: number;
+    grandTotal: number;
+  };
 }
 
 export type SortField =

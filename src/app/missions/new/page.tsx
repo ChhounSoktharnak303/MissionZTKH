@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/app/dashboard-layout";
 import MissionForm from "@/components/missions/MissionForm";
+import { createMission } from "@/lib/storage";
 import type { MissionFormData } from "@/types/mission";
 
 export default function NewMissionPage() {
@@ -14,12 +15,7 @@ export default function NewMissionPage() {
   const handleSubmit = useCallback(async (data: MissionFormData) => {
     setSaving(true);
     try {
-      const res = await fetch("/api/missions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to create");
+      createMission(data);
       toast.success("Mission created successfully!");
       router.push("/missions");
     } catch {
