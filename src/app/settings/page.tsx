@@ -58,7 +58,7 @@ export default function SettingsPage() {
                 <Truck className="w-4 h-4 text-blue-500" />
                 <div>
                   <p className="text-sm text-gray-900 dark:text-white">Fuel Rate</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">$0.75 per 10 km</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">$0.25 (0-3km) | $0.50 (3-9.9km) | $0.75 (10km+)</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">

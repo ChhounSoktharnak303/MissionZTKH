@@ -1,8 +1,14 @@
-export const FUEL_RATE_PER_10_KM = 0.75;
 export const DEFAULT_TICKET_COST = 0.5;
 
 export function calculateFuelCost(distanceKm: number): number {
-  const cost = (distanceKm / 10) * FUEL_RATE_PER_10_KM;
+  let cost: number;
+  if (distanceKm <= 3.0) {
+    cost = 0.25;
+  } else if (distanceKm <= 9.9) {
+    cost = 0.50;
+  } else {
+    cost = 0.75;
+  }
   return Math.round(cost * 100) / 100;
 }
 
